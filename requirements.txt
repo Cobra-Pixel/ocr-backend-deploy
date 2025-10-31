@@ -10,6 +10,6 @@ PyMySQL==1.1.1
 easyocr==1.7.1
 pytesseract==0.3.10
 torch==2.5.1                 # ✅ versión más ligera compatible con CPU de Render
-torchvision==0.20.1          # ✅ compatible con torch==2.5.1
+torchvision==0.22.0          # ✅ compatible con torch==2.5.1
 requests==2.32.3
 cryptography==43.0.1
