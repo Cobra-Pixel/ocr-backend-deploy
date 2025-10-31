@@ -1,3 +1,4 @@
+# app/main.py
 from fastapi import FastAPI
 from app.config import create_app
 from app.db.connection import init_db
