@@ -1,72 +1,79 @@
+# app/ocr/cloud_ocr.py
 import os
 import io
+from typing import Dict
+
 import requests
 from PIL import Image
 from dotenv import load_dotenv
 
-# Carga variables del archivo .env
+# Solo para entorno local; en Render las variables vienen del panel
 load_dotenv()
 
 API_KEY = os.getenv("OCR_SPACE_API_KEY")
 OCR_URL = "https://api.ocr.space/parse/image"
 
-def extract_text_cloud(image_bytes: bytes, filename: str, lang: str = "spa"):
+def _compress_if_needed(image_bytes: bytes, max_bytes: int = 1_500_000) -> bytes:
+    """
+    Re-encode a JPEG si el archivo es grande para evitar límites de OCR.Space.
+    """
+    if len(image_bytes) <= max_bytes:
+        return image_bytes
+    try:
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        # iterar calidades hasta quedar por debajo del límite
+        for quality in (85, 80, 75, 70, 60):
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=quality, optimize=True)
+            data = buf.getvalue()
+            if len(data) <= max_bytes:
+                return data
+        return data
+    except Exception:
+        # si falla la compresión, regresamos el original
+        return image_bytes
+
+def extract_text_cloud(image_bytes: bytes, filename: str, lang: str = "spa") -> Dict[str, str]:
     """
     Envía la imagen a la API OCR.Space y devuelve el texto reconocido.
-    Funciona bien con manuscritos o fotos de cuaderno.
     """
     if not API_KEY:
-        raise ValueError("⚠️ Falta OCR_SPACE_API_KEY en el entorno o archivo .env")
+        raise ValueError("OCR_SPACE_API_KEY no configurada en el servidor")
 
-    # 🔹 Idiomas válidos según OCR.Space
-    allowed_langs = {
-        "eng", "spa", "por", "fra", "deu", "ita", "ara",
-        "chi_sim", "jpn", "rus", "tur", "vie"
-    }
-    if lang not in allowed_langs:
-        print(f"⚠️ Idioma '{lang}' no permitido. Se usará 'spa' por defecto.")
-        lang = "spa"
-
-    # 🔹 Comprimir si es muy grande (>1MB)
-    if len(image_bytes) > 1024 * 1024:
-        print("⚠️ Imagen demasiado grande, se comprimirá antes de enviar.")
-        image = Image.open(io.BytesIO(image_bytes))
-        image = image.convert("RGB")
-        buffer = io.BytesIO()
-        image.save(buffer, format="JPEG", quality=70, optimize=True)
-        image_bytes = buffer.getvalue()
-
-    # 🔹 Archivos y parámetros
-    files = {
-        "file": (filename or "image.jpg", image_bytes, "image/jpeg")
-    }
-    data = {
+    payload = {
         "apikey": API_KEY,
         "language": lang,
         "isOverlayRequired": False,
+        "OCREngine": 2,            # engine moderno
         "scale": True,
-        "isTable": False,
-        "OCREngine": 1  # <-- usa motor estable 1, no el 2 (causa errores)
+        "detectOrientation": True,
     }
 
-    try:
-        response = requests.post(OCR_URL, files=files, data=data, timeout=90)
-        response.raise_for_status()
-    except Exception as e:
-        raise ValueError(f"❌ Error en la petición a OCR.Space: {e}")
+    # filetype orienta mejor al motor (opcional)
+    ext = (filename.split(".")[-1] or "png").lower()
+    payload["filetype"] = ext
 
+    safe_bytes = _compress_if_needed(image_bytes)
+
+    files = {
+        "file": (filename or f"image.{ext}", safe_bytes),
+    }
+
+    response = requests.post(OCR_URL, files=files, data=payload, timeout=60)
+
+    # Algunas respuestas de error vienen con 4xx/5xx: preferimos propagar el mensaje
     try:
         result = response.json()
     except Exception:
-        raise ValueError(f"❌ Respuesta inválida de OCR.Space: {response.text[:200]}")
+        raise ValueError(f"Respuesta inválida de OCR.Space: status={response.status_code} body={response.text[:200]}")
 
     if result.get("IsErroredOnProcessing"):
+        # Devuelve primer mensaje entendible
         err = result.get("ErrorMessage") or result.get("ErrorDetails") or ["Error desconocido en OCR.Space"]
-        raise ValueError(f"⚠️ {err[0]}")
+        if isinstance(err, list):
+            err = err[0]
+        raise ValueError(str(err))
 
-    parsed = result.get("ParsedResults", [])
-    if not parsed:
-        return {"text": "", "error": "No se detectó texto"}
-
-    text = parsed[0].get("ParsedText", "")
-    return {"text": text.strip()}
+    parsed = result.get("ParsedResults") or []
+    text = (parsed[0].get("ParsedText", "") if parsed else "").strip()
+    return {"text": text}

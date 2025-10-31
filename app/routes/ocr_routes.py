@@ -10,14 +10,14 @@ router = APIRouter()
 def ping():
     return {"status": "ok"}
 
-@router.post("/")  # ✅ coincide con prefix /api/ocr
+@router.post("/")  # queda /api/ocr/ por el prefix del main
 async def ocr_extract(file: UploadFile = File(...)):
-    """Extrae texto con EasyOCR + PyTesseract."""
+    """OCR local: EasyOCR (+ Tesseract si está disponible)."""
     try:
         result = await extract_text_from_image(file)
         return {
-            "text": result.get("text", "").strip(),
-            "source": "EasyOCR + PyTesseract",
+            "text": (result.get("text") or "").strip(),
+            "source": "EasyOCR + (opcional Tesseract)",
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
     except ValueError as e:
@@ -25,20 +25,22 @@ async def ocr_extract(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/cloud/")  # ✅ agrega barra final
+@router.post("/cloud/")  # queda /api/ocr/cloud/
 async def ocr_extract_cloud(file: UploadFile = File(...)):
-    """Extrae texto manuscrito usando OCR.Space Cloud."""
+    """OCR Cloud: OCR.Space (ideal manuscrito)."""
     try:
-        if not file.content_type.startswith("image/"):
+        if not file.content_type or not file.content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail="Archivo no es imagen.")
         data = await file.read()
-        text = extract_text_cloud(data, file.filename, lang="spa")
-
+        result = extract_text_cloud(data, file.filename, lang="spa")
         return {
-            "text": text.strip(),
+            "text": (result.get("text") or "").strip(),
             "source": "OCR.Space Cloud",
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
+    except ValueError as e:
+        # Errores propios de la API (clave inválida, límites, etc.)
+        raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
