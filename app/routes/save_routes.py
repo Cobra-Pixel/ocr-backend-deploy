@@ -1,3 +1,4 @@
+# app/routes/save_routes.py
 from pathlib import Path
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import FileResponse
@@ -7,7 +8,7 @@ from app.utils.file_utils import save_text_to_disk
 
 router = APIRouter()
 
-@router.post("/api/save/")
+@router.post("/save/")  # ✅ sin /api/, porque el prefix /api ya está en main.py
 async def save_text(text: str = Form(...), image_mime: str = Form(...)):
     """Guarda texto y metadatos en base de datos y disco."""
     db = SessionLocal()
@@ -21,8 +22,7 @@ async def save_text(text: str = Form(...), image_mime: str = Form(...)):
     finally:
         db.close()
 
-
-@router.get("/api/download/{filename}")
+@router.get("/download/{filename}")  # ✅ igual, sin /api/
 async def download_file(filename: str):
     """Devuelve el archivo .txt guardado en /data/exports."""
     base_dir = Path(__file__).resolve().parent.parent.parent

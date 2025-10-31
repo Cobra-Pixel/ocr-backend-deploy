@@ -8,13 +8,12 @@ from app.routes.save_routes import router as save_router
 
 app: FastAPI = create_app()
 
-# 🔹 DB al arrancar (que no tumbe la app si falla)
+# 🔹 Base de datos al arrancar
 @app.on_event("startup")
 def on_startup():
     try:
         init_db()
     except Exception as e:
-        # Loguea pero no detiene el arranque
         print(f"[WARN] DB init skipped/failed: {e}")
 
 # 🔹 Rutas principales
@@ -26,7 +25,7 @@ app.include_router(save_router, prefix="/api", tags=["Save"])
 def root():
     return {"message": "OCR Extractor API running ✅"}
 
-# 🚀 Ruta de prueba para verificar conexión a MySQL
+# 🚀 Ruta de prueba MySQL
 @app.get("/api/test-db")
 def test_db():
     try:

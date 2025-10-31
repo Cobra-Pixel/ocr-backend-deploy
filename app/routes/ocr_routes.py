@@ -1,3 +1,4 @@
+# app/routes/ocr_routes.py
 from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.ocr.service import extract_text_from_image
@@ -9,17 +10,22 @@ router = APIRouter()
 def ping():
     return {"status": "ok"}
 
-@router.post("/")  # ← 🔧 importante
+@router.post("/")  # ✅ coincide con prefix /api/ocr
 async def ocr_extract(file: UploadFile = File(...)):
     """Extrae texto con EasyOCR + PyTesseract."""
     try:
-        return await extract_text_from_image(file)
+        result = await extract_text_from_image(file)
+        return {
+            "text": result.get("text", "").strip(),
+            "source": "EasyOCR + PyTesseract",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/cloud")  # ← ya está bien
+@router.post("/cloud/")  # ✅ agrega barra final
 async def ocr_extract_cloud(file: UploadFile = File(...)):
     """Extrae texto manuscrito usando OCR.Space Cloud."""
     try:
@@ -29,9 +35,9 @@ async def ocr_extract_cloud(file: UploadFile = File(...)):
         text = extract_text_cloud(data, file.filename, lang="spa")
 
         return {
-            "text": text.strip(),  # ← 🔧 devuelve JSON compatible
+            "text": text.strip(),
             "source": "OCR.Space Cloud",
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         }
     except HTTPException:
         raise
