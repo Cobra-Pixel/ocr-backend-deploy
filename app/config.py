@@ -1,20 +1,19 @@
 # app/config.py
-import os
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
-from dotenv import load_dotenv
-
-# Cargar variables del archivo .env (solo en local)
-load_dotenv()
+from fastapi.middleware.cors import CORSMiddleware
 
 def create_app() -> FastAPI:
-    """Crea e inicializa la app con configuración base y CORS."""
     app = FastAPI(title="OCR Extractor API")
 
-    allowed = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    # 🚀 Agrega tus dominios frontend aquí
+    origins = [
+        "http://localhost:5173",                      # para desarrollo local
+        "https://ocr-frontend-ruddy.vercel.app",      # dominio de producción Vercel
+    ]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[o.strip() for o in allowed],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
