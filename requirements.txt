@@ -1,5 +1,5 @@
 fastapi==0.115.0
-uvicorn[standard]==0.30.6
+uvicorn==0.30.6
 python-multipart==0.0.12
 python-dotenv==1.0.1
 Pillow==10.4.0
@@ -9,7 +9,7 @@ SQLAlchemy==2.0.35
 PyMySQL==1.1.1
 easyocr==1.7.1
 pytesseract==0.3.10
-torch==2.5.1
+torch==2.2.2
 torchvision==0.17.2
 requests==2.32.3
 cryptography==43.0.1
