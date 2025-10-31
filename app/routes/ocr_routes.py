@@ -27,7 +27,7 @@ async def ocr_extract_cloud(file: UploadFile = File(...)):
         if not file.content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail="Archivo no es imagen.")
         data = await file.read()
-        text = extract_text_cloud(data, file.filename, lang="spa+eng")
+        text = extract_text_cloud(data, file.filename, lang="spa")
 
         return {
             "text": text.strip(),
