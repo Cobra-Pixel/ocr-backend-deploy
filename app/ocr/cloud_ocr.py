@@ -66,7 +66,7 @@ def extract_text_cloud(image_bytes: bytes, filename: str, lang: str = "spa"):
 
     parsed = result.get("ParsedResults", [])
     if not parsed:
-        raise ValueError("⚠️ OCR.Space no devolvió resultados de texto.")
+        return {"text": "", "error": "No se detectó texto"}
 
-    text = parsed[0].get("ParsedText", "").strip()
-    return text
+    text = parsed[0].get("ParsedText", "")
+    return {"text": text.strip()}
