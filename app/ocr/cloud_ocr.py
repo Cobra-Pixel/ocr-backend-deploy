@@ -59,7 +59,8 @@ def extract_text_cloud(image_bytes: bytes, filename: str, lang: str = "spa") -> 
         "file": (filename or f"image.{ext}", safe_bytes),
     }
 
-    response = requests.post(OCR_URL, files=files, data=payload, timeout=60)
+    if response.status_code >= 400:
+        raise ValueError(f"OCR.Space devolvió {response.status_code}: {response.text[:200]}")
 
     # Algunas respuestas de error vienen con 4xx/5xx: preferimos propagar el mensaje
     try:
