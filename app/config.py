@@ -6,13 +6,14 @@ import os
 def create_app() -> FastAPI:
     app = FastAPI(title="OCR Extractor API")
 
-    # 🚀 Dominios permitidos (Render + Vercel)
+    # 🚀 Dominios permitidos
     origins = [
-        "http://localhost:5173",                      # desarrollo local
-        "https://ocr-frontend-ruddy.vercel.app",      # producción Vercel
+        "http://localhost:5173",  # desarrollo local
+        "https://ocr-frontend-ruddy.vercel.app",  # build anterior
+        "https://ocr-frontend-253ad4nqb-cobra-pixel.vercel.app",  # nuevo dominio actual de Vercel
     ]
 
-    # También permite agregar desde variable ALLOWED_ORIGINS si existe
+    # Permitir también los agregados por variable ALLOWED_ORIGINS
     env_origins = os.getenv("ALLOWED_ORIGINS")
     if env_origins:
         for origin in env_origins.split(","):
@@ -29,5 +30,4 @@ def create_app() -> FastAPI:
     )
 
     print(f"🔐 CORS habilitado para: {origins}")
-
     return app
