@@ -1,92 +1,94 @@
 # app/ocr/service.py
-"""
-Lógica principal de extracción OCR (impreso / manuscrito)
-Optimizada para entornos limitados (como Render Free o Standard)
-"""
 from datetime import datetime
 from typing import Dict
-import io
+import re
 import numpy as np
+from PIL import Image
 import cv2
-from PIL import Image, UnidentifiedImageError
 import pytesseract
+
 from app.ocr.pipeline import preprocess_image_bytes
 from app.ocr.reader import reader
 from app.ocr.cleaner import clean_ocr_text
 
+
 def _np_to_rgb(img_gray: np.ndarray) -> np.ndarray:
-    """Convierte imagen a RGB si está en escala de grises."""
+    """Asegura formato RGB para EasyOCR/Tesseract."""
     if len(img_gray.shape) == 2:
         return cv2.cvtColor(img_gray, cv2.COLOR_GRAY2RGB)
     if img_gray.shape[2] == 3:
         return cv2.cvtColor(img_gray, cv2.COLOR_BGR2RGB)
     return img_gray
 
-def _resize_if_needed(img: np.ndarray, max_dim: int = 1280) -> np.ndarray:
-    """Evita que Render consuma demasiada memoria con imágenes grandes."""
-    h, w = img.shape[:2]
-    if max(h, w) > max_dim:
-        ratio = max_dim / float(max(h, w))
-        new_size = (int(w * ratio), int(h * ratio))
-        return cv2.resize(img, new_size, interpolation=cv2.INTER_AREA)
-    return img
+
+def _remove_noise_lines(text: str) -> str:
+    """Elimina líneas basura: numéricas, símbolos o repeticiones."""
+    clean_lines = []
+    for line in text.splitlines():
+        line_stripped = line.strip()
+
+        # Ignorar líneas vacías o llenas de símbolos
+        if not line_stripped:
+            continue
+        if len(re.findall(r"[A-Za-zÁÉÍÓÚáéíóúÑñ]", line_stripped)) < 3:
+            continue  # poca cantidad de letras, parece ruido
+        if re.fullmatch(r"[\d\s;:.,%\-_'\"!¡?¿]+", line_stripped):
+            continue
+        if re.search(r"[;:%0-9]{5,}", line_stripped):
+            continue
+
+        clean_lines.append(line_stripped)
+
+    # Evita duplicados consecutivos
+    final_lines = []
+    for line in clean_lines:
+        if not final_lines or final_lines[-1].lower() != line.lower():
+            final_lines.append(line)
+    return "\n".join(final_lines)
+
+
+def _normalize_spaces(text: str) -> str:
+    """Normaliza espacios, saltos y signos raros."""
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
 
 async def extract_text_from_image(file) -> Dict[str, str]:
     """
     Pipeline completo:
-      - Verifica tipo de archivo
-      - Preprocesa (grises, contraste, binarización, deskew)
-      - OCR con EasyOCR + Tesseract
-      - Limpieza final
+      - Preprocesa imagen
+      - Extrae texto con EasyOCR + Tesseract
+      - Limpia duplicados y ruido
     """
+    data = await file.read()
+
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise ValueError("Archivo no es una imagen válida")
+
+    # 1️⃣ Preprocesamiento
+    img_gray = preprocess_image_bytes(data)
+    rgb = _np_to_rgb(img_gray)
+
+    # 2️⃣ EasyOCR (impreso/manuscrito)
+    results_easy = reader.readtext(rgb, detail=1, paragraph=True)
+    text_easy = "\n".join([r[1] for r in results_easy if len(r) > 1]).strip()
+
+    # 3️⃣ Tesseract (impreso)
+    text_tess = ""
     try:
-        data = await file.read()
-        if not file.content_type or not file.content_type.startswith("image/"):
-            raise ValueError("❌ El archivo no es una imagen válida.")
+        text_tess = pytesseract.image_to_string(Image.fromarray(rgb), lang="spa+eng")
+    except Exception:
+        text_tess = ""
 
-        # Decodificar y validar
-        try:
-            Image.open(io.BytesIO(data))
-        except UnidentifiedImageError:
-            raise ValueError("⚠️ Imagen corrupta o formato no compatible.")
+    # 4️⃣ Combina y limpia
+    combined = (text_easy + "\n" + text_tess).strip()
+    cleaned = clean_ocr_text(combined)
+    cleaned = _remove_noise_lines(cleaned)
+    cleaned = _normalize_spaces(cleaned)
 
-        # 1️⃣ Preprocesamiento
-        img_gray = preprocess_image_bytes(data)
-        rgb = _np_to_rgb(img_gray)
-        rgb = _resize_if_needed(rgb)
-
-        # 2️⃣ EasyOCR
-        try:
-            results_easy = reader.readtext(rgb, detail=1, paragraph=True)
-            text_easy = "\n".join([r[1] for r in results_easy if len(r) > 1]).strip()
-        except Exception as e:
-            print(f"⚠️ EasyOCR falló: {e}")
-            text_easy = ""
-
-        # 3️⃣ PyTesseract
-        try:
-            text_tess = pytesseract.image_to_string(Image.fromarray(rgb), lang="spa+eng")
-        except Exception as e:
-            print(f"⚠️ PyTesseract falló: {e}")
-            text_tess = ""
-
-        # 4️⃣ Combinación y limpieza
-        combined = (text_easy + "\n" + text_tess).strip()
-        if not combined:
-            raise ValueError("⚠️ No se detectó texto legible en la imagen.")
-
-        cleaned = clean_ocr_text(combined)
-
-        return {
-            "text": cleaned,
-            "mime": file.content_type,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-        }
-
-    except ValueError as e:
-        # Error esperado (imagen vacía, formato inválido, etc.)
-        raise ValueError(str(e))
-
-    except Exception as e:
-        # Error inesperado (OCR interno, memoria, etc.)
-        raise ValueError(f"❌ Error interno del OCR: {e}")
+    return {
+        "text": cleaned,
+        "mime": file.content_type,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
