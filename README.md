@@ -4,7 +4,8 @@ Este es el **backend oficial del proyecto OCR Extractor**, una aplicacion web qu
 Desarrollado con **FastAPI**, **SQLAlchemy** y **MySQL (Railway)**, y desplegado en **Render**.
 
 ## Enlaces de despliegue
-Servicio URL
+| Servicio | URL |
+|----------|-----|
 **Frontend (Vercel)** [https://ocr-frontend-ruddy.vercel.app] (https://ocr-frontend-ruddy.vercel.app)
 **Backend (Render)** [https://ocr-backend-deploy.onrender.com] (https://ocr-backend-deploy.onrender.com)
 **Base de datos (Railway)** Conexion privada MySQL
@@ -18,26 +19,6 @@ Servicio URL
 - **SQLAlchemy + MySQL (Railway)**
 - **Render** (backend)
 - **Vercel** (frontend)
-
-## Estructura del proyecto
-app/
-    main.py # Punto de entrada de la API
-    config.py # Configuracion FastAPI + CORS
-    db/
-        connection.py # Configuracion a MySQL (Railway)
-        crud.py # Operaciones CRUD
-        models.py # Modelos SQLAlchemy
-    ocr/
-        service.py # OCR local (EasyOCR + Tesseract)
-        cloud_ocr.py # OCR mediante API externa
-        cleaner.py # Limpieza de texto extraido
-        pipeline.py # Preprocesamiento de imagenes
-        reader.py # Inicializacion de EasyOCR
-  routes/
-        ocr_routes.py # Rutas /api/ocr/
-        save_routes.py #   Rutas /api/save/
-  utils/
-        file_utils.py # Guardado de texto en disco
 
 ## Variables de entorno (.env)
 Ejemplo de archivo '.env' local o variables configuradas en Render:
@@ -65,19 +46,19 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 # Luego abrir navegador
 http://127.0.0.1:8000/docs
 
-## Despliegue
-# Render (Backend)
-# Configurar variables de entorno (DATABASE_URL, OCR_SPACE_API_KEY, ALLOWED_ORIGINS, etc.)
-# Usar este comando al inicio
+# Despliegue
+Render (Backend)
+Configurar variables de entorno (DATABASE_URL, OCR_SPACE_API_KEY, ALLOWED_ORIGINS, etc.)
+Usar este comando al inicio
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-## Railway (Base de datos)
-# Crear una base de datos MySQL
-# Copiar URL y pegarla en DATABASE_URL
+# Railway (Base de datos)
+Crear una base de datos MySQL
+Copiar URL y pegarla en DATABASE_URL
 
-## OCR.Space API
-# Obtener API Key gratuita en
-# (https://ocr.space/ocrapi)
+# OCR.Space API
+Obtener API Key gratuita en
+https://ocr.space/ocrapi
 
 ## Endpoints principales
   # Metodo      # Ruta                       # Descripcion
@@ -87,10 +68,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 - **GET**     **/api/download/{filename}**   **Descarga el archivo .txt generado**
 
 ## Licencia
-# Proyecto de uso educativo y lobre bajo licencia MIT.
-# Desarrollado por Cobra-Pixel
-# © 2025 - OCR Extractor 
+Proyecto de uso educativo y lobre bajo licencia MIT.
+Desarrollado por Cobra-Pixel
+© 2025 - OCR Extractor 
 
 ## Creditos y soporte
-# Si te resulta util, deja una estrellita en el repositorio y comparte tus sugerencias.
-# Puedes abrir un issue o PR en https://github.com/Cobra-Pixel/ocr-backend-deploy
+Si te resulta util, deja una estrellita en el repositorio y comparte tus sugerencias.
+Puedes abrir un issue o PR en https://github.com/Cobra-Pixel/ocr-backend-deploy
