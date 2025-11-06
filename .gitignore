@@ -1,32 +1,32 @@
-# 🧠 Entorno virtual
+# Entorno virtual
 .venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# ⚙️ Archivos de configuración local (NO subir)
+# Archivos de configuración local (NO subir)
 .env
 *.log
 
-# 📦 Archivos temporales / datos generados
+# Archivos temporales / datos generados
 data/exports/*.txt
 data/*.txt
 temp/
 uploads/
 __temp__/
 
-# 🧰 Archivos de sistema / IDE
+# Archivos de sistema / IDE
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 
-# 🚀 Compilaciones o artefactos
+# Compilaciones o artefactos
 dist/
 build/
 *.egg-info/
 
-# 🧾 Copias o cache adicionales
+# Copias o cache adicionales
 *.bak
 *.swp
